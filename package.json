@@ -1,0 +1,23 @@
+{
+  "name": "restaurant-pos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node db/seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "node-thermal-printer": "^4.6.0",
+    "qrcode": "^1.5.4",
+    "serve-static": "^2.2.0"
+  }
+}
