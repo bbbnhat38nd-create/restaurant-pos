@@ -38,6 +38,40 @@ if (tenantCount === 0) {
   db.prepare("INSERT OR IGNORE INTO settings (tenant_id, key, value) VALUES (1, 'printer_name', '')").run();
 }
 
+// Auto-seed menu data if tenant has no categories
+const categoryCount = db.prepare('SELECT COUNT(*) as cnt FROM categories WHERE tenant_id = 1').get().cnt;
+if (categoryCount === 0) {
+  console.log('Seeding default menu data for admin tenant...');
+  const insertCat = db.prepare('INSERT INTO categories (tenant_id, name, sort_order) VALUES (?, ?, ?)');
+  insertCat.run(1, '主餐', 1);
+  insertCat.run(1, '小食', 2);
+  insertCat.run(1, '飲品', 3);
+
+  const insertItem = db.prepare(
+    'INSERT INTO items (tenant_id, category_id, name, base_price, is_available, emoji) VALUES (?, ?, ?, ?, 1, ?)'
+  );
+  insertItem.run(1, 1, '排骨飯', 80, '🍖');
+  insertItem.run(1, 1, '雞腿飯', 90, '🍗');
+  insertItem.run(1, 1, '滷肉飯', 50, '🍛');
+  insertItem.run(1, 2, '薯條', 30, '🍟');
+  insertItem.run(1, 2, '雞塊', 40, '🍗');
+  insertItem.run(1, 3, '紅茶', 20, '🍵');
+  insertItem.run(1, 3, '綠茶', 20, '🍵');
+
+  const insertSize = db.prepare('INSERT INTO item_sizes (tenant_id, item_id, name, price_adjust) VALUES (?, ?, ?, ?)');
+  [1, 2, 3].forEach(itemId => {
+    insertSize.run(1, itemId, '小份', 0);
+    insertSize.run(1, itemId, '大份', 10);
+  });
+
+  const insertTopping = db.prepare('INSERT INTO item_toppings (tenant_id, item_id, name, price_adjust) VALUES (?, ?, ?, ?)');
+  [1, 2, 3, 4, 5, 6, 7].forEach(itemId => {
+    insertTopping.run(1, itemId, '加蛋', 10);
+    insertTopping.run(1, itemId, '加辣', 0);
+  });
+  console.log('Default menu seeded for admin tenant.');
+}
+
 // Migration: generate printer_api_key for tenants that don't have one
 const crypto = require('crypto');
 const tenantsWithoutKey = db.prepare(`
