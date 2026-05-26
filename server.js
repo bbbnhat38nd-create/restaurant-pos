@@ -86,6 +86,22 @@ for (const t of tenantsWithoutKey) {
   console.log(`Generated printer API key for tenant ${t.id}`);
 }
 
+// Migration: add expires_at column for existing databases
+try {
+  db.exec("ALTER TABLE tenants ADD COLUMN expires_at TEXT DEFAULT NULL");
+  console.log('Migration: added expires_at column');
+} catch (e) {
+  // column already exists, ignore
+}
+
+// Auto-disable expired tenants (runs every startup)
+const expiredCount = db.prepare(
+  "UPDATE tenants SET status = 'disabled' WHERE status = 'active' AND expires_at IS NOT NULL AND date(expires_at) < date('now','localtime')"
+).run();
+if (expiredCount.changes > 0) {
+  console.log(`Auto-disabled ${expiredCount.changes} expired tenant(s)`);
+}
+
 app.use('/api/public', require('./routes/public'));
 app.use('/api/printer', require('./routes/printer'));
 app.use('/api', require('./routes/auth').router);

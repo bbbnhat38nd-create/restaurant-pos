@@ -539,16 +539,21 @@ async function renderTenantsTab() {
       <button class="btn btn-primary" onclick="addTenant()" style="align-self:flex-end;">新增餐車</button>
     </div></div>`;
 
-  html += '<div class="card"><div class="table-wrap"><table><thead><tr><th>ID</th><th>帳號</th><th>店名</th><th>狀態</th><th>建立時間</th><th>操作</th></tr></thead><tbody>';
+  html += '<div class="card"><div class="table-wrap"><table><thead><tr><th>ID</th><th>帳號</th><th>店名</th><th>狀態</th><th>到期日</th><th>建立時間</th><th>操作</th></tr></thead><tbody>';
   for (const t of tenants) {
+    const expired = t.expires_at && new Date(t.expires_at + 'T23:59:59') < new Date();
+    const statusBadge = expired ? 'badge-cancelled' : (t.status === 'active' ? 'badge-done' : 'badge-cancelled');
+    const statusText = expired ? '已過期' : (t.status === 'active' ? '啟用' : '停用');
     html += `<tr>
       <td>${t.id}</td>
       <td>${t.username}</td>
       <td>${t.store_name}</td>
-      <td><span class="badge ${t.status === 'active' ? 'badge-done' : 'badge-cancelled'}">${t.status === 'active' ? '啟用' : '停用'}</span></td>
+      <td><span class="badge ${statusBadge}">${statusText}</span></td>
+      <td>${t.expires_at || '永久有效'}</td>
       <td>${t.created_at || '—'}</td>
       <td>
         ${t.id !== 1 ? `<button class="btn btn-primary btn-sm" onclick="impersonateTenant(${t.id})">👤 進入後台</button>` : ''}
+        <button class="btn btn-primary btn-sm" onclick="setExpiry(${t.id}, '${t.expires_at || ''}')">📅 到期日</button>
         <button class="btn btn-sm ${t.status === 'active' ? 'btn-danger' : 'btn-primary'}" onclick="updateTenantStatus(${t.id}, '${t.status === 'active' ? 'disabled' : 'active'}')">${t.status === 'active' ? '停用' : '啟用'}</button>
         ${t.id !== 1 ? `<button class="btn btn-danger btn-sm" onclick="deleteTenant(${t.id})">刪除</button>` : ''}
       </td>
@@ -600,6 +605,20 @@ async function impersonateTenant(id) {
   if (!res.ok) { const d = await res.json(); return showToast(d.error || '切換失敗', true); }
   showToast('已切換至餐車後台');
   setTimeout(() => window.location.reload(), 500);
+}
+
+async function setExpiry(id, currentDate) {
+  const date = prompt('設定到期日（YYYY-MM-DD），留空為永久有效：\n\n到期後系統會自動停用該餐車', currentDate);
+  if (date === null) return; // cancel
+  const expires_at = date.trim() || null;
+  const res = await fetch(API + '/tenants/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expires_at })
+  });
+  if (!res.ok) { const d = await res.json(); return showToast(d.error || '設定失敗', true); }
+  showToast('到期日已更新');
+  renderTenantsTab();
 }
 
 async function restoreAdmin() {

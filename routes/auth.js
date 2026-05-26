@@ -22,7 +22,7 @@ router.post('/auth/login', (req, res) => {
   const db = getDb();
   const hash = hashPassword(password);
   const tenant = db.prepare(
-    "SELECT id, username, store_name, status FROM tenants WHERE username = ? AND password_hash = ?"
+    "SELECT id, username, store_name, status, expires_at FROM tenants WHERE username = ? AND password_hash = ?"
   ).get(username, hash);
 
   if (!tenant) {
@@ -30,6 +30,11 @@ router.post('/auth/login', (req, res) => {
   }
   if (tenant.status !== 'active') {
     return res.status(403).json({ error: 'account is disabled' });
+  }
+  // Check if tenant has expired
+  if (tenant.expires_at && new Date(tenant.expires_at + 'T23:59:59') < new Date()) {
+    db.prepare("UPDATE tenants SET status = 'disabled' WHERE id = ?").run(tenant.id);
+    return res.status(403).json({ error: 'subscription expired' });
   }
 
   req.session.tenantId = tenant.id;

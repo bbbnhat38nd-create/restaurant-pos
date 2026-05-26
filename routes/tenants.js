@@ -9,7 +9,7 @@ function hashPassword(password) {
 
 router.get('/tenants', requireAuth, (req, res) => {
   const db = getDb();
-  const tenants = db.prepare("SELECT id, username, store_name, status, created_at FROM tenants ORDER BY id").all();
+  const tenants = db.prepare("SELECT id, username, store_name, status, expires_at, created_at FROM tenants ORDER BY id").all();
   res.json(tenants);
 });
 
@@ -39,15 +39,38 @@ router.post('/tenants', requireAuth, (req, res) => {
 
 router.put('/tenants/:id', requireAuth, (req, res) => {
   const db = getDb();
-  const { status } = req.body;
-  if (!status || !['active', 'disabled'].includes(status)) {
+  const { status, expires_at } = req.body;
+
+  if (status && !['active', 'disabled'].includes(status)) {
     return res.status(400).json({ error: 'status must be active or disabled' });
   }
 
-  const r = db.prepare('UPDATE tenants SET status = ? WHERE id = ?').run(status, req.params.id);
+  // Build dynamic update
+  const fields = [];
+  const params = [];
+  if (status) {
+    fields.push('status = ?');
+    params.push(status);
+  }
+  if (expires_at !== undefined) {
+    // null or date string
+    if (expires_at === null || expires_at === '') {
+      fields.push('expires_at = NULL');
+    } else {
+      fields.push('expires_at = ?');
+      params.push(expires_at);
+    }
+  }
+
+  if (fields.length === 0) {
+    return res.status(400).json({ error: 'status or expires_at required' });
+  }
+
+  params.push(req.params.id);
+  const r = db.prepare(`UPDATE tenants SET ${fields.join(', ')} WHERE id = ?`).run(...params);
   if (r.changes === 0) return res.status(404).json({ error: 'tenant not found' });
 
-  const tenant = db.prepare('SELECT id, username, store_name, status, created_at FROM tenants WHERE id = ?').get(req.params.id);
+  const tenant = db.prepare('SELECT id, username, store_name, status, expires_at, created_at FROM tenants WHERE id = ?').get(req.params.id);
   res.json(tenant);
 });
 

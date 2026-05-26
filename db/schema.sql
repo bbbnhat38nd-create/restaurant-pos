@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   password_hash TEXT NOT NULL,
   store_name TEXT NOT NULL,
   status TEXT DEFAULT 'active',
+  expires_at TEXT DEFAULT NULL,
   created_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
