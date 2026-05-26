@@ -98,14 +98,22 @@ router.get('/auth/me', (req, res) => {
 
   const db = getDb();
   const tenant = db.prepare(
-    "SELECT id, username, store_name, status FROM tenants WHERE id = ?"
+    "SELECT id, username, store_name, status, expires_at FROM tenants WHERE id = ?"
   ).get(req.session.tenantId);
 
   if (!tenant) {
     return res.status(401).json({ error: 'not authenticated' });
   }
 
-  res.json({ id: tenant.id, username: tenant.username, store_name: tenant.store_name, status: tenant.status, impersonating: !!req.session.originalTenantId });
+  // Calculate days left
+  let daysLeft = null;
+  if (tenant.expires_at) {
+    const now = new Date();
+    const expiry = new Date(tenant.expires_at + 'T23:59:59');
+    daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+  }
+
+  res.json({ id: tenant.id, username: tenant.username, store_name: tenant.store_name, status: tenant.status, expires_at: tenant.expires_at, days_left: daysLeft, impersonating: !!req.session.originalTenantId });
 });
 
 // POST /api/auth/impersonate — admin (id=1) switches to another tenant

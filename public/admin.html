@@ -137,6 +137,10 @@ async function checkAuth() {
     if (currentTenant.impersonating) {
       document.getElementById('impersonateBanner').style.display = '';
     }
+    // Show expiry warning if within 3 days
+    if (currentTenant.days_left !== null && currentTenant.days_left <= 3 && currentTenant.days_left >= 0) {
+      showExpiryWarning(currentTenant.days_left);
+    }
     return currentTenant;
   } catch (e) {
     window.location.href = '/login.html';
@@ -605,6 +609,27 @@ async function impersonateTenant(id) {
   if (!res.ok) { const d = await res.json(); return showToast(d.error || '切換失敗', true); }
   showToast('已切換至餐車後台');
   setTimeout(() => window.location.reload(), 500);
+}
+
+function showExpiryWarning(daysLeft) {
+  const banner = document.getElementById('impersonateBanner');
+  if (daysLeft <= 0) {
+    banner.innerHTML = '<span>⚠️ 你的訂閱已於今天到期，功能即將受限，請盡速續約！</span>';
+  } else if (daysLeft === 1) {
+    banner.innerHTML = '<span>⚠️ 你的訂閱將於明天到期，請盡速續約以避免功能受限！</span>';
+  } else {
+    banner.innerHTML = `<span>⚠️ 你的訂閱將於 ${daysLeft} 天後到期，請盡速續約！</span>`;
+  }
+  banner.style.background = '#fff3cd';
+  banner.style.color = '#856404';
+  banner.style.display = 'flex';
+  banner.style.alignItems = 'center';
+  banner.style.justifyContent = 'space-between';
+  banner.style.padding = '12px 20px';
+  banner.style.borderRadius = '10px';
+  banner.style.marginBottom = '16px';
+  banner.style.fontSize = '14px';
+  banner.style.fontWeight = '600';
 }
 
 async function setExpiry(id, currentDate) {
